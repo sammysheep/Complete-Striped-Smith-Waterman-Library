@@ -40,11 +40,15 @@ static void reverse_comple(const char* seq, char* rc) {
 		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
 		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
 		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4, 4, 4,
+		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4,78, 4,
 		4, 4,  4, 4,  65, 65, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4, 4, 4,
+		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4,78, 4,
 		4, 4,  4, 4,  65, 65, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 	};
+	//// SSS, get rid of control characters for ambiguous nucleotides, 4.4.2014
+	//   Added above
+	//rc_table[78] = rc_table[110] = 78;
+	////
 	rc[end] = '\0';
 	-- end;
 	while (LIKELY(start < end)) {
@@ -201,8 +205,9 @@ end:
 					mapq += length;
 				}
 			}
-			fprintf(stdout,"\tNM:i:%d\t", mapq);
-			if (a->score2 > 0) fprintf(stdout, "ZS:i:%d\n", a->score2);
+			// SSS - corrected trailing tabs when ZS not available - 8-27-2014
+			fprintf(stdout,"\tNM:i:%d", mapq);
+			if (a->score2 > 0) fprintf(stdout, "\tZS:i:%d\n", a->score2);
 			else fprintf(stdout, "\n");
 		}
 	}
