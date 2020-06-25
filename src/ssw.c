@@ -612,7 +612,8 @@ static cigar* banded_sw (const int8_t* ref,
 			for (j = 1; j <= u; j ++) h_b[j] = h_c[j];
 		}
 		band_width *= 2;
-	} while (LIKELY(max < score));
+//	} while (LIKELY(max < score));
+	} while (LIKELY(max < score) && LIKELY(band_width <= readLen));
 	band_width /= 2;
 
 	// trace back
