@@ -25,19 +25,19 @@
 
 /* The 2-clause BSD License
 
-   Copyright 2006 Michael Farrar.  
+   Copyright 2006 Michael Farrar.
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
    met:
-   
+
    1. Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
-   
+
    2. Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-   
+
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -122,7 +122,7 @@ struct _profile{
 	uint8_t bias;
 };
 
-/* array index is an ASCII character value from a CIGAR, 
+/* array index is an ASCII character value from a CIGAR,
    element value is the corresponding integer opcode between 0 and 8 */
 const uint8_t encoded_ops[] = {
 	0,         0,         0,         0,
@@ -314,7 +314,7 @@ static alignment_end* sw_sse2_byte (const int8_t* ref,
 			}
 		}
 
-end:		
+end:
 		vMaxScore = _mm_max_epu8(vMaxScore, vMaxColumn);
 		vTemp = _mm_cmpeq_epi8(vMaxMark, vMaxScore);
 		cmp = _mm_movemask_epi8(vTemp);
@@ -717,7 +717,7 @@ static cigar* banded_sw (const int8_t* ref,
 				free(e_b);
 				free(h_b);
 				free(c);
-				free(result); 
+				free(result);
 				return 0;
 		}
 		if (op == prev_op) ++e;
@@ -889,7 +889,7 @@ s_align* ssw_align (const s_profile* prof,
 
     if (UNLIKELY(r->score1 > bests_reverse[0].score)) { // banded_sw result will miss a small part
 		fprintf(stderr, "Warning: The alignment path of one pair of sequences may miss a small part. [ssw.c ssw_align]\n");
-        r->flag = 2;  
+        r->flag = 2;
     }
     free(bests_reverse);
 
@@ -944,14 +944,14 @@ uint32_t* store_previous_m (int8_t choice,	// 0: current not M, 1: current match
 					   uint32_t* new_cigar) {
 
 	if ((*length_m) && (choice == 2 || !choice)) {
-		new_cigar = add_cigar (new_cigar, p, s, (*length_m), '='); 
+		new_cigar = add_cigar (new_cigar, p, s, (*length_m), 'M');
 		(*length_m) = 0;
-	} else if ((*length_x) && (choice == 1 || !choice)) { 
-		new_cigar = add_cigar (new_cigar, p, s, (*length_x), 'X'); 
+	} else if ((*length_x) && (choice == 1 || !choice)) {
+		new_cigar = add_cigar (new_cigar, p, s, (*length_x), 'M');
 		(*length_x) = 0;
 	}
 	return new_cigar;
-}				
+}
 
 /*! @function:
      1. Calculate the number of mismatches.
@@ -984,35 +984,31 @@ int32_t mark_mismatch (int32_t ref_begin1,
 			for (j = 0; j < length; ++j) {
 				if (*ref != *read) {
 					++ mismatch_length;
-					// the previous is match; however the current one is mismatche
-					new_cigar = store_previous_m (2, &length_m, &length_x, &p, &s, new_cigar);			
-					++ length_x;
-				} else {
-					// the previous is mismatch; however the current one is matche
-					new_cigar = store_previous_m (1, &length_m, &length_x, &p, &s, new_cigar);			
-					++ length_m;
 				}
-				++ ref;
-				++ read;
 			}
+			ref += length;
+			read += length;
+			length_m = length;
+
+			new_cigar = store_previous_m (1, &length_m, &length_x, &p, &s, new_cigar);
 		}else if (op == 'I') {
 			read += length;
 			mismatch_length += length;
-			new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);			
-			new_cigar = add_cigar (new_cigar, &p, &s, length, 'I'); 
+			new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);
+			new_cigar = add_cigar (new_cigar, &p, &s, length, 'I');
 		}else if (op == 'D') {
 			ref += length;
 			mismatch_length += length;
-			new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);			
-			new_cigar = add_cigar (new_cigar, &p, &s, length, 'D'); 
+			new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);
+			new_cigar = add_cigar (new_cigar, &p, &s, length, 'D');
 		}
 	}
 	new_cigar = store_previous_m (0, &length_m, &length_x, &p, &s, new_cigar);
-	
+
 	length = readLen - read_end1 - 1;
 	if (length > 0) new_cigar = add_cigar(new_cigar, &p, &s, length, 'S');
-	
-	(*cigarLen) = p;	
+
+	(*cigarLen) = p;
 	free(*cigar);
 	(*cigar) = new_cigar;
 	return mismatch_length;

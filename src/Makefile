@@ -1,11 +1,11 @@
 CC = gcc
 CXX = g++
-CFLAGS += -Wall -pipe -O2
+CFLAGS += -Wall -pipe -O3
 #CFLAGS += -Wall -pipe -g -fsanitize=address	# for debug
 CXXFLAGS := $(CFLAGS)
 LOBJS = ssw.o
 LCPPOBJS = ssw_cpp.o
-PROG = ssw_test
+PROG = ssw_v1.2.5M
 LIB = libssw.so
 EXAMPLE = example_c
 EXAMPLE_CPP = example_cpp
@@ -16,7 +16,7 @@ JAVA_OBJ = ssw/Aligner.class ssw/Alignment.class ssw/Example.class
 
 .PHONY: all default java clean
 
-default: $(PROG) $(EXAMPLE) $(EXAMPLE_CPP) $(LIB) 
+default: $(PROG) $(EXAMPLE) $(EXAMPLE_CPP) $(LIB)
 core: $(PROG)
 java: java_home $(JAVA_JAR) $(JAVA_LIB)
 all: default java
@@ -40,7 +40,7 @@ $(EXAMPLE_CPP): example.cpp $(LOBJS) $(LCPPOBJS)
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) -lm -lz
 
 $(JAVA_LIB): sswjni.c ssw.c ssw.h
-	$(CC) $(CFLAGS) $(JAVA_INLCUDES) -fPIC -shared -rdynamic -o $@ $< ssw.c 
+	$(CC) $(CFLAGS) $(JAVA_INLCUDES) -fPIC -shared -rdynamic -o $@ $< ssw.c
 
 $(JAVA_JAR): $(JAVA_OBJ)
 	jar cvfe $@ ssw.Example $^
@@ -61,4 +61,4 @@ ssw_cpp.o: ssw_cpp.cpp ssw_cpp.h ssw.h
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 clean:
-	-rm -f $(LOBJS) $(LCPPOBJS) $(PROG) $(LIB) $(EXAMPLE) $(EXAMPLE_CPP) $(JAVA_LIB) $(JAVA_JAR) $(JAVA_OBJ) *~ 
+	-rm -f $(LOBJS) $(LCPPOBJS) $(PROG) $(LIB) $(EXAMPLE) $(EXAMPLE_CPP) $(JAVA_LIB) $(JAVA_JAR) $(JAVA_OBJ) *~

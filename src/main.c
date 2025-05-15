@@ -42,14 +42,14 @@ KSEQ_INIT(gzFile, gzread)
 static void reverse_comple(const char* seq, char* rc) {
 	int32_t end = strlen(seq), start = 0;
 	static const int8_t rc_table[128] = {
-		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4,  4,
-		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4,  4,
-		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4,  4,
-		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4,  4,
-		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4, 78, 4,
-		4, 4,  4, 4,  65, 65, 4, 4,  4, 4, 4, 4,  4, 4, 4,  4,
-		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4, 78,  4,
-		4, 4,  4, 4,  65, 65, 4, 4,  4, 4, 4, 4,  4, 4, 4,  4
+		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+		4, 4,  4, 4,  4,  4,  4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4,78, 4,
+		4, 4,  4, 4,  65, 65, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
+		4, 84, 4, 71, 4,  4,  4, 67, 4, 4, 4, 4,  4, 4,78, 4,
+		4, 4,  4, 4,  65, 65, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 	};
 	rc[end] = '\0';
 	-- end;
@@ -184,8 +184,8 @@ end:
 			}else if (read->qual.s) fprintf (stdout, "%s", read->qual.s);
 			else fprintf(stdout, "*");
 			fprintf(stdout, "\tAS:i:%d", a->score1);
-			fprintf(stdout,"\tNM:i:%d\t", mismatch);
-			if (a->score2 > 0) fprintf(stdout, "ZS:i:%d\n", a->score2);
+			fprintf(stdout,"\tNM:i:%d", mismatch);
+			if (a->score2 > 0) fprintf(stdout, "\tZS:i:%d\n", a->score2);
 			else fprintf(stdout, "\n");
 		}
 	}
@@ -281,9 +281,9 @@ int main (int argc, char * const argv[]) {
 			case 'o': gap_open = atoi(optarg); break;
 			case 'e': gap_extension = atoi(optarg); break;
 
-			case 'a': 
+			case 'a':
                 mat_name = (char*)malloc(strlen(optarg) + 1);
-                strcpy(mat_name, optarg); 
+                strcpy(mat_name, optarg);
                 break;
 
 			case 'f': filter = atoi(optarg); break;
@@ -313,7 +313,7 @@ int main (int argc, char * const argv[]) {
 	// Parse score matrix.
 		FILE *f_mat = fopen(mat_name, "r");
         free(mat_name);
-        if (f_mat == NULL) { 
+        if (f_mat == NULL) {
             fprintf(stderr, "Failed to open the weight matrix file.\n");
             free(mata);
             return 1;
