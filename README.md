@@ -262,6 +262,10 @@ The following is a faithful Rust translation of the `kseq.h` streaming FASTA/FAS
 ```rust
 use std::io::{self, BufRead};
 
+// Printable ASCII bounds, matching kseq's `c >= 33 && c <= 127`.
+const QUAL_MIN: u8 = 33;
+const QUAL_MAX: u8 = 127;
+
 /// A biological sequence record parsed from FASTA or FASTQ format.
 #[derive(Debug, Default)]
 pub struct SeqRecord {
@@ -276,7 +280,7 @@ pub struct SeqRecord {
 /// # Return values (mirroring `kseq_read`)
 /// * `Ok(Some(record))` — a complete record was read
 /// * `Ok(None)`         — end of file
-/// * `Err(_)`           — truncated FASTQ quality string
+/// * `Err(_)`           — truncated or malformed FASTQ record
 pub struct KSeqReader<R: BufRead> {
     inner: R,
     /// The full header line (including the leading `>` or `@`) peeked
@@ -310,10 +314,17 @@ impl<R: BufRead> KSeqReader<R> {
 
         // Split the header into name and optional comment
         // (everything after the leading `>` / `@`).
-        let rest = header.trim_end_matches(['\n', '\r']).get(1..).unwrap_or("");
+        let header_trimmed = header.trim_end_matches(['\n', '\r']);
+        if header_trimmed.len() < 1 {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "empty header line"));
+        }
+        let rest = &header_trimmed[1..]; // safe: header always starts with '>' or '@'
         let (name, comment) = match rest.find(|c: char| c.is_ascii_whitespace()) {
-            Some(i) => (rest[..i].to_owned(), rest[i + 1..].trim_start().to_owned()),
-            None    => (rest.to_owned(), String::new()),
+            Some(i) => {
+                let comment_start = rest.get(i + 1..).unwrap_or("").trim_start();
+                (rest[..i].to_owned(), comment_start.to_owned())
+            }
+            None => (rest.to_owned(), String::new()),
         };
 
         // Read sequence lines until the next header or a FASTQ `+` separator.
@@ -342,9 +353,8 @@ impl<R: BufRead> KSeqReader<R> {
                                 "truncated FASTQ quality string",
                             ));
                         }
-                        // Accept printable ASCII (33–127), matching kseq's `c >= 33 && c <= 127`.
                         for b in line.bytes() {
-                            if (33..=127).contains(&b) && qual.len() < seq.len() {
+                            if (QUAL_MIN..=QUAL_MAX).contains(&b) && qual.len() < seq.len() {
                                 qual.push(b as char);
                             }
                         }
