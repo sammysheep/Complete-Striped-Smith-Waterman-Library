@@ -255,6 +255,146 @@ To use the library, either reference the `ssw.jar` or including the Aligner and 
 Please check all the R package information here:
 https://github.com/nanxstats/ssw-r
 
+## Rust snippet: kseq FASTA/FASTQ parser
+
+The following is a faithful Rust translation of the `kseq.h` streaming FASTA/FASTQ parser used in `main.c`. It matches the behaviour of `kseq_read()` — including multi-line sequences, optional comments, FASTQ quality strings, and the buffered-ahead header character — while using idiomatic Rust types.
+
+```rust
+use std::io::{self, BufRead};
+
+/// A biological sequence record parsed from FASTA or FASTQ format.
+#[derive(Debug, Default)]
+pub struct SeqRecord {
+    pub name: String,
+    pub comment: String,
+    pub seq: String,
+    pub qual: String,
+}
+
+/// A streaming FASTA/FASTQ parser, modelled on `kseq.h`.
+///
+/// # Return values (mirroring `kseq_read`)
+/// * `Ok(Some(record))` — a complete record was read
+/// * `Ok(None)`         — end of file
+/// * `Err(_)`           — truncated FASTQ quality string
+pub struct KSeqReader<R: BufRead> {
+    inner: R,
+    /// The full header line (including the leading `>` or `@`) peeked
+    /// while scanning past the previous record's sequence, equivalent to
+    /// `kseq_t::last_char` in the C implementation.
+    next_header: Option<String>,
+}
+
+impl<R: BufRead> KSeqReader<R> {
+    pub fn new(inner: R) -> Self {
+        Self { inner, next_header: None }
+    }
+
+    pub fn read_next(&mut self) -> io::Result<Option<SeqRecord>> {
+        let header = match self.next_header.take() {
+            Some(h) => h,
+            None => {
+                // Scan forward for the first `>` / `@` header line.
+                let mut line = String::new();
+                loop {
+                    line.clear();
+                    if self.inner.read_line(&mut line)? == 0 {
+                        return Ok(None); // EOF
+                    }
+                    if matches!(line.chars().next(), Some('>') | Some('@')) {
+                        break line;
+                    }
+                }
+            }
+        };
+
+        // Split the header into name and optional comment
+        // (everything after the leading `>` / `@`).
+        let rest = header.trim_end_matches(['\n', '\r']).get(1..).unwrap_or("");
+        let (name, comment) = match rest.find(|c: char| c.is_ascii_whitespace()) {
+            Some(i) => (rest[..i].to_owned(), rest[i + 1..].trim_start().to_owned()),
+            None    => (rest.to_owned(), String::new()),
+        };
+
+        // Read sequence lines until the next header or a FASTQ `+` separator.
+        let mut seq = String::new();
+        let mut line = String::new();
+        loop {
+            line.clear();
+            if self.inner.read_line(&mut line)? == 0 {
+                // EOF while accumulating sequence — valid for FASTA.
+                return Ok(Some(SeqRecord { name, comment, seq, qual: String::new() }));
+            }
+            match line.chars().next() {
+                Some('>') | Some('@') => {
+                    // Buffer this header for the next call (= kseq's `last_char`).
+                    self.next_header = Some(line.clone());
+                    return Ok(Some(SeqRecord { name, comment, seq, qual: String::new() }));
+                }
+                Some('+') => {
+                    // FASTQ: skip the rest of the `+` line, then read quality scores.
+                    let mut qual = String::new();
+                    while qual.len() < seq.len() {
+                        line.clear();
+                        if self.inner.read_line(&mut line)? == 0 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::UnexpectedEof,
+                                "truncated FASTQ quality string",
+                            ));
+                        }
+                        // Accept printable ASCII (33–127), matching kseq's `c >= 33 && c <= 127`.
+                        for b in line.bytes() {
+                            if (33..=127).contains(&b) && qual.len() < seq.len() {
+                                qual.push(b as char);
+                            }
+                        }
+                    }
+                    if qual.len() != seq.len() {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "FASTQ quality string length mismatch",
+                        ));
+                    }
+                    return Ok(Some(SeqRecord { name, comment, seq, qual }));
+                }
+                _ => {
+                    // Accumulate printable non-space characters (kseq's `isgraph` check).
+                    for c in line.chars() {
+                        if c.is_ascii_graphic() {
+                            seq.push(c);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Allows the reader to be used as a standard iterator.
+impl<R: BufRead> Iterator for KSeqReader<R> {
+    type Item = io::Result<SeqRecord>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.read_next().transpose()
+    }
+}
+```
+
+### Usage example
+
+```rust
+use std::{fs::File, io::BufReader};
+
+fn main() -> std::io::Result<()> {
+    let file = File::open("sequences.fa")?;
+    let reader = KSeqReader::new(BufReader::new(file));
+    for record in reader {
+        let r = record?;
+        println!("name={} seq_len={}", r.name, r.seq.len());
+    }
+    Ok(())
+}
+```
+
 ## Citation
 
 Please cite this paper, if you need:
